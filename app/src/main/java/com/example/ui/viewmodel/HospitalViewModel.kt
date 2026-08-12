@@ -68,6 +68,9 @@ class HospitalViewModel(application: Application) : AndroidViewModel(application
     val toastMessage: StateFlow<String?> = _toastMessage.asStateFlow()
 
     // Repository Flows
+    val users: StateFlow<List<UserEntity>> = repository.allUsers
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val patients: StateFlow<List<PatientEntity>> = repository.allPatients
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
@@ -161,6 +164,53 @@ class HospitalViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             repository.updateAppointmentStatus(appointment, newStatus)
             showToast("Appointment ${appointment.id} updated to $newStatus")
+        }
+    }
+
+    fun deleteAppointment(appointmentId: String) {
+        viewModelScope.launch {
+            repository.deleteAppointment(appointmentId)
+            showToast("Appointment $appointmentId cancelled")
+        }
+    }
+
+    fun updateUserProfile(user: UserEntity) {
+        viewModelScope.launch {
+            repository.updateUser(user)
+            showToast("Profile for ${user.name} updated in Room database")
+        }
+    }
+
+    fun addMedicalRecord(
+        patientId: String,
+        patientName: String,
+        doctorName: String,
+        diagnosis: String,
+        clinicalNotes: String,
+        treatmentPlan: String,
+        bloodPressure: String = "120/80 mmHg",
+        pulseRate: Int = 75,
+        temperature: Double = 98.6,
+        spO2: Int = 98
+    ) {
+        viewModelScope.launch {
+            val recordId = "REC_${(1000..9999).random()}"
+            val record = MedicalRecordEntity(
+                id = recordId,
+                patientId = patientId,
+                patientName = patientName,
+                doctorName = doctorName,
+                date = "2026-08-06",
+                bloodPressure = bloodPressure,
+                pulseRate = pulseRate,
+                temperature = temperature,
+                spO2 = spO2,
+                diagnosis = diagnosis,
+                clinicalNotes = clinicalNotes,
+                treatmentPlan = treatmentPlan
+            )
+            repository.insertMedicalRecord(record)
+            showToast("Added Medical EHR record ($recordId) for $patientName")
         }
     }
 

@@ -103,6 +103,9 @@ fun AppNavigationHost(
                 onAddPatient = { name, age, gender, blood, phone, doc ->
                     viewModel.addPatient(name, age, gender, blood, phone, doc)
                 },
+                onAddMedicalRecord = { pId, pName, docName, diag, notes, plan ->
+                    viewModel.addMedicalRecord(pId, pName, docName, diag, notes, plan)
+                },
                 onExplainWithAi = { summary ->
                     viewModel.summarizeLabReport(summary)
                     viewModel.setTab(MainTab.AI_SUITE)

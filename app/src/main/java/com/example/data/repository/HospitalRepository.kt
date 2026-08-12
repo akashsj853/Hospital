@@ -23,9 +23,31 @@ class HospitalRepository(private val dao: HospitalDao) {
     val allEmergencyAlerts: Flow<List<EmergencyAlertEntity>> = dao.getAllEmergencyAlerts()
     val allAuditLogs: Flow<List<AuditLogEntity>> = dao.getAllAuditLogs()
 
+    suspend fun getUserById(id: String): UserEntity? = dao.getUserById(id)
+
     suspend fun getUserByEmail(email: String): UserEntity? = dao.getUserByEmail(email)
 
     suspend fun insertUser(user: UserEntity) = dao.insertUser(user)
+
+    suspend fun updateUser(user: UserEntity) = dao.updateUser(user)
+
+    suspend fun deleteAppointment(id: String) {
+        dao.deleteAppointmentById(id)
+        dao.insertAuditLog(
+            AuditLogEntity(
+                id = "LOG_${System.currentTimeMillis()}",
+                userRole = "SYSTEM",
+                action = "CANCEL_APPOINTMENT",
+                module = "APPOINTMENTS",
+                timestamp = "2026-08-06 10:05",
+                details = "Cancelled appointment $id"
+            )
+        )
+    }
+
+    suspend fun deleteMedicalRecord(id: String) {
+        dao.deleteMedicalRecordById(id)
+    }
 
     suspend fun insertAppointment(appointment: AppointmentEntity) {
         dao.insertAppointment(appointment)

@@ -34,6 +34,7 @@ fun PatientsEhrScreen(
     prescriptions: List<PrescriptionEntity>,
     labReports: List<LabReportEntity>,
     onAddPatient: (name: String, age: Int, gender: String, bloodGroup: String, phone: String, doctor: String) -> Unit,
+    onAddMedicalRecord: (patientId: String, patientName: String, doctorName: String, diagnosis: String, notes: String, plan: String) -> Unit,
     onExplainWithAi: (String) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -158,6 +159,9 @@ fun PatientsEhrScreen(
                 prescriptions = prescriptions.filter { it.patientId == patient.id },
                 reports = labReports.filter { it.patientId == patient.id },
                 onDismiss = { selectedPatient = null },
+                onAddRecord = { doctor, diagnosis, notes, plan ->
+                    onAddMedicalRecord(patient.id, patient.name, doctor, diagnosis, notes, plan)
+                },
                 onExplainWithAi = onExplainWithAi
             )
         }
@@ -215,8 +219,11 @@ private fun PatientDetailEhrDialog(
     prescriptions: List<PrescriptionEntity>,
     reports: List<LabReportEntity>,
     onDismiss: () -> Unit,
+    onAddRecord: (doctor: String, diagnosis: String, notes: String, plan: String) -> Unit,
     onExplainWithAi: (String) -> Unit
 ) {
+    var showNewRecordDialog by remember { mutableStateOf(false) }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
@@ -226,61 +233,81 @@ private fun PatientDetailEhrDialog(
             }
         },
         text = {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(380.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Patient Summary
-                item {
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(text = "MRN ID: ${patient.id} • Ward: ${patient.wardBed}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                            Text(text = "Phone: ${patient.phone} • Blood: ${patient.bloodGroup}", fontSize = 12.sp)
-                            Text(text = "Emergency Contact: ${patient.emergencyContact}", fontSize = 12.sp)
-                        }
+            Column {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Button(
+                        onClick = { showNewRecordDialog = true },
+                        modifier = Modifier.height(32.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MedNovaBlue)
+                    ) {
+                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text("Add EHR Record", fontSize = 11.sp)
                     }
                 }
 
-                // Clinical Records
-                item {
-                    Text(text = "Latest Vitals & Diagnosis", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
+                Spacer(modifier = Modifier.height(8.dp))
 
-                items(records) { rec ->
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(text = "Diagnosis: ${rec.diagnosis}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
-                            Text(text = "BP: ${rec.bloodPressure} | Pulse: ${rec.pulseRate} bpm | SpO2: ${rec.spO2}%", fontSize = 12.sp)
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(text = "Doctor Notes: ${rec.clinicalNotes}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
-                        }
-                    }
-                }
-
-                // Lab Diagnostics
-                item {
-                    Text(text = "Lab Reports", fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                }
-
-                items(reports) { rep ->
-                    Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                                Text(text = rep.testName, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                StatusChip(status = rep.status)
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(340.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Patient Summary
+                    item {
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(text = "MRN ID: ${patient.id} • Ward: ${patient.wardBed}", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                Text(text = "Phone: ${patient.phone} • Blood: ${patient.bloodGroup}", fontSize = 12.sp)
+                                Text(text = "Emergency Contact: ${patient.emergencyContact}", fontSize = 12.sp)
                             }
-                            Text(text = rep.resultSummary, fontSize = 12.sp)
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Button(
-                                onClick = { onExplainWithAi(rep.resultSummary) },
-                                modifier = Modifier.height(30.dp),
-                                contentPadding = PaddingValues(horizontal = 8.dp)
-                            ) {
-                                Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(12.dp))
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(text = "Explain with AI", fontSize = 10.sp)
+                        }
+                    }
+
+                    // Clinical Records
+                    item {
+                        Text(text = "Latest Vitals & Diagnosis", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+
+                    items(records) { rec ->
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(text = "Diagnosis: ${rec.diagnosis}", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary, fontSize = 13.sp)
+                                Text(text = "BP: ${rec.bloodPressure} | Pulse: ${rec.pulseRate} bpm | SpO2: ${rec.spO2}%", fontSize = 12.sp)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Text(text = "Doctor Notes: ${rec.clinicalNotes}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f))
+                            }
+                        }
+                    }
+
+                    // Lab Diagnostics
+                    item {
+                        Text(text = "Lab Reports", fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    }
+
+                    items(reports) { rep ->
+                        Card(colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                    Text(text = rep.testName, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    StatusChip(status = rep.status)
+                                }
+                                Text(text = rep.resultSummary, fontSize = 12.sp)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Button(
+                                    onClick = { onExplainWithAi(rep.resultSummary) },
+                                    modifier = Modifier.height(30.dp),
+                                    contentPadding = PaddingValues(horizontal = 8.dp)
+                                ) {
+                                    Icon(imageVector = Icons.Default.AutoAwesome, contentDescription = null, modifier = Modifier.size(12.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(text = "Explain with AI", fontSize = 10.sp)
+                                }
                             }
                         }
                     }
@@ -291,4 +318,38 @@ private fun PatientDetailEhrDialog(
             TextButton(onClick = onDismiss) { Text("Close") }
         }
     )
+
+    if (showNewRecordDialog) {
+        var doctorName by remember { mutableStateOf(patient.assignedDoctor.ifBlank { "Dr. Ananya Sharma" }) }
+        var diagnosis by remember { mutableStateOf("") }
+        var clinicalNotes by remember { mutableStateOf("") }
+        var treatmentPlan by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showNewRecordDialog = false },
+            title = { Text("Add EHR Medical Record", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(value = doctorName, onValueChange = { doctorName = it }, label = { Text("Attending Doctor") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = diagnosis, onValueChange = { diagnosis = it }, label = { Text("Clinical Diagnosis") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = clinicalNotes, onValueChange = { clinicalNotes = it }, label = { Text("Doctor Clinical Notes") }, modifier = Modifier.fillMaxWidth())
+                    OutlinedTextField(value = treatmentPlan, onValueChange = { treatmentPlan = it }, label = { Text("Treatment Plan") }, modifier = Modifier.fillMaxWidth())
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onAddRecord(doctorName, diagnosis, clinicalNotes, treatmentPlan)
+                        showNewRecordDialog = false
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MedNovaBlue)
+                ) {
+                    Text("Save Record to DB")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showNewRecordDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
 }

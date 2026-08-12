@@ -15,11 +15,17 @@ interface HospitalDao {
     @Query("SELECT * FROM users")
     fun getAllUsers(): Flow<List<UserEntity>>
 
+    @Query("SELECT * FROM users WHERE id = :id LIMIT 1")
+    suspend fun getUserById(id: String): UserEntity?
+
     @Query("SELECT * FROM users WHERE email = :email LIMIT 1")
     suspend fun getUserByEmail(email: String): UserEntity?
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUser(user: UserEntity)
+
+    @Update
+    suspend fun updateUser(user: UserEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertUsers(users: List<UserEntity>)
@@ -60,6 +66,9 @@ interface HospitalDao {
     @Update
     suspend fun updateAppointment(appointment: AppointmentEntity)
 
+    @Query("DELETE FROM appointments WHERE id = :id")
+    suspend fun deleteAppointmentById(id: String)
+
     // MEDICAL RECORDS
     @Query("SELECT * FROM medical_records WHERE patientId = :patientId ORDER BY date DESC")
     fun getMedicalRecordsForPatient(patientId: String): Flow<List<MedicalRecordEntity>>
@@ -72,6 +81,9 @@ interface HospitalDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMedicalRecords(records: List<MedicalRecordEntity>)
+
+    @Query("DELETE FROM medical_records WHERE id = :id")
+    suspend fun deleteMedicalRecordById(id: String)
 
     // PRESCRIPTIONS
     @Query("SELECT * FROM prescriptions ORDER BY date DESC")
