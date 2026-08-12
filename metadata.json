@@ -1,0 +1,6 @@
+{
+  "name": "MedNova AI",
+  "description": "Enterprise Hospital Management System with AI-powered diagnostics, appointments, EHR, pharmacy, lab, bed management, billing, and multi-role portals.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,18 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Center white rounded card base -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M38,28h32c5.5,0 10,4.5 10,10v32c0,5.5 -4.5,10 -10,10H38c-5.5,0 -10,-4.5 -10,-10V38c0,-5.5 4.5,-10 10,-10z" />
+    <!-- Medical Cross in Primary Blue (#2563EB) -->
+    <path
+        android:fillColor="#2563EB"
+        android:pathData="M50,38h8v12h12v8H58v12h-8V58H38v-8h12z" />
+    <!-- AI Sparkle/Teal Accent Accent Circle (#14B8A6) -->
+    <path
+        android:fillColor="#14B8A6"
+        android:pathData="M68,36m-5,0a5,5 0 1,1 10,0a5,5 0 1,1 -10,0" />
+</vector>
