@@ -1,7 +1,7 @@
 package com.example.ui.screens
 
-import androidx.compose.animation.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,8 +19,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.models.*
 import com.example.ui.components.GlassCard
-import com.example.ui.components.GlassBox
-import com.example.ui.components.MetricCard
 import com.example.ui.components.StatusChip
 import com.example.ui.theme.*
 import com.example.ui.viewmodel.MainTab
@@ -43,110 +41,133 @@ fun DashboardScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
-        contentPadding = PaddingValues(vertical = 16.dp),
+        contentPadding = PaddingValues(vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Welcome Banner AI Glass Card
+        // 1. Role Welcome Banner
         item {
             GlassCard(
-                shape = RoundedCornerShape(28.dp),
-                modifier = Modifier.fillMaxWidth(),
-                bgAlpha = 0.16f
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
+                    modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(MedNovaTeal)
-                            )
-                            Text(
-                                text = "PORTAL ACTIVE • ${role.label.uppercase()}",
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.2.sp,
-                                color = MedNovaTeal
-                            )
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
                         Text(
-                            text = "Command Center",
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
+                            text = "Portal: ${role.label}",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MedNovaBlue,
+                            fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Frosted glass analytics active. System capacity operating smoothly.",
+                            text = "Operational Overview",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        Text(
+                            text = "Real-time bed telemetry, active queues, and AI assistant ready.",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                         )
                     }
-                    Spacer(modifier = Modifier.width(12.dp))
                     Button(
                         onClick = onBookAppointmentClick,
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
-                        shape = RoundedCornerShape(16.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MedNovaBlue),
+                        contentPadding = PaddingValues(horizontal = 14.dp, vertical = 10.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "New Appt", fontSize = 12.sp)
+                        Icon(imageVector = Icons.Default.AddCircle, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "New Appt", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                     }
                 }
             }
         }
 
-        // 4 KPI METRIC CARDS
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    MetricCard(
-                        title = "Bed Occupancy",
-                        value = "$occupiedBeds / $totalBeds Beds",
-                        subtitle = "${occupancyRate.toInt()}% Ward Capacity",
-                        icon = Icons.Default.Bed,
-                        iconTint = MedNovaBlue,
-                        modifier = Modifier.weight(1f)
-                    )
-                    MetricCard(
-                        title = "Appointments",
-                        value = "${appointments.size} Scheduled",
-                        subtitle = "${appointments.count { it.status == "CONFIRMED" }} Confirmed",
-                        icon = Icons.Default.CalendarMonth,
-                        iconTint = MedNovaTeal,
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    MetricCard(
-                        title = "Active Patients",
-                        value = "${patients.size} Records",
-                        subtitle = "${patients.count { it.status == "Critical" }} Critical ICU",
-                        icon = Icons.Default.PersonalInjury,
-                        iconTint = Color(0xFF8B5CF6),
-                        modifier = Modifier.weight(1f)
-                    )
-                    MetricCard(
-                        title = "Emergency Alerts",
-                        value = "${emergencyAlerts.count { it.status == "ACTIVE" }} Active",
-                        subtitle = "Trauma Bay Online",
-                        icon = Icons.Default.Emergency,
-                        iconTint = MedNovaDanger,
-                        modifier = Modifier.weight(1f)
-                    )
+        // 2. Critical Emergency Alert Banner (if any active alerts)
+        val activeEmergencies = emergencyAlerts.filter { it.status == "ACTIVE" }
+        if (activeEmergencies.isNotEmpty()) {
+            item {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MedNovaDanger.copy(alpha = 0.15f)),
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Warning,
+                            contentDescription = "Emergency Alert",
+                            tint = MedNovaDanger,
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "CRITICAL ALERT (${activeEmergencies.size} ACTIVE)",
+                                fontWeight = FontWeight.Bold,
+                                color = MedNovaDanger,
+                                fontSize = 14.sp
+                            )
+                            val latest = activeEmergencies.first()
+                            Text(
+                                text = "${latest.severity} - ${latest.location}: ${latest.message}",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                        TextButton(onClick = { onTabSelected(MainTab.EMERGENCY) }) {
+                            Text("Respond", color = MedNovaDanger, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
         }
 
-        // HOSPITAL BED OCCUPANCY GAUGE / PROGRESS
+        // 3. KPI Quick Metrics Grid
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                StatCard(
+                    title = "Total Patients",
+                    value = "${patients.size}",
+                    icon = Icons.Default.People,
+                    accentColor = MedNovaBlue,
+                    modifier = Modifier.weight(1f)
+                ) { onTabSelected(MainTab.PATIENTS_EHR) }
+
+                StatCard(
+                    title = "Appointments",
+                    value = "${appointments.size}",
+                    icon = Icons.Default.CalendarMonth,
+                    accentColor = MedNovaTeal,
+                    modifier = Modifier.weight(1f)
+                ) { onTabSelected(MainTab.APPOINTMENTS) }
+
+                StatCard(
+                    title = "Bed Occupancy",
+                    value = "${occupancyRate.toInt()}%",
+                    icon = Icons.Default.Bed,
+                    accentColor = if (occupancyRate > 80) MedNovaDanger else MedNovaSuccess,
+                    modifier = Modifier.weight(1f)
+                ) { onTabSelected(MainTab.WARDS_BEDS) }
+            }
+        }
+
+        // 4. Ward Bed Capacity Monitor
         item {
             GlassCard(
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
@@ -182,7 +203,12 @@ fun DashboardScreen(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(text = "Available Beds: ${totalBeds - occupiedBeds}", fontSize = 12.sp, color = MedNovaSuccess, fontWeight = FontWeight.SemiBold)
+                    Text(
+                        text = "Available Beds: ${totalBeds - occupiedBeds}",
+                        fontSize = 12.sp,
+                        color = MedNovaSuccess,
+                        fontWeight = FontWeight.SemiBold
+                    )
                     TextButton(onClick = { onTabSelected(MainTab.WARDS_BEDS) }) {
                         Text(text = "Manage Wards →", fontSize = 12.sp)
                     }
@@ -190,10 +216,10 @@ fun DashboardScreen(
             }
         }
 
-        // QUICK PORTAL ACCESS TILES
+        // 5. Quick Portal Access Hub
         item {
             Text(
-                text = "Enterprise Operations Hub",
+                text = "Enterprise Modules",
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
             )
@@ -204,35 +230,47 @@ fun DashboardScreen(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                QuickTile("EHR", Icons.Default.PersonalInjury, Modifier.weight(1f)) { onTabSelected(MainTab.PATIENTS_EHR) }
+                QuickTile("Patients", Icons.Default.PersonalInjury, Modifier.weight(1f)) { onTabSelected(MainTab.PATIENTS_EHR) }
+                QuickTile("Doctors", Icons.Default.MedicalServices, Modifier.weight(1f)) { onTabSelected(MainTab.DOCTORS) }
                 QuickTile("Pharmacy", Icons.Default.Medication, Modifier.weight(1f)) { onTabSelected(MainTab.PHARMACY) }
-                QuickTile("Lab Test", Icons.Default.Biotech, Modifier.weight(1f)) { onTabSelected(MainTab.LABORATORY) }
                 QuickTile("Billing", Icons.Default.Receipt, Modifier.weight(1f)) { onTabSelected(MainTab.BILLING) }
             }
         }
 
-        // TODAY'S APPOINTMENTS QUEUE
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                QuickTile("Lab & Diagnostics", Icons.Default.Biotech, Modifier.weight(1f)) { onTabSelected(MainTab.LABORATORY) }
+                QuickTile("AI Clinical Suite", Icons.Default.AutoAwesome, Modifier.weight(1f)) { onTabSelected(MainTab.AI_SUITE) }
+                QuickTile("Emergency Res", Icons.Default.LocalHospital, Modifier.weight(1f)) { onTabSelected(MainTab.EMERGENCY) }
+                QuickTile("Audit Logs", Icons.Default.Security, Modifier.weight(1f)) { onTabSelected(MainTab.AUDIT_LOGS) }
+            }
+        }
+
+        // 6. Today's Appointments Queue
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Text(text = "Today's Appointments Queue", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                Text(text = "Today's Consultations", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                 TextButton(onClick = { onTabSelected(MainTab.APPOINTMENTS) }) {
                     Text(text = "View All", fontSize = 12.sp)
                 }
             }
         }
 
-        items(appointments.take(3)) { appt ->
+        items(appointments.take(4)) { appt ->
             Card(
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Row(
-                    modifier = Modifier.padding(12.dp),
+                    modifier = Modifier.padding(14.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -254,22 +292,52 @@ fun DashboardScreen(
 }
 
 @Composable
+private fun StatCard(
+    title: String,
+    value: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    accentColor: Color,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    GlassCard(
+        shape = RoundedCornerShape(16.dp),
+        modifier = modifier.clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.Top
+        ) {
+            Text(text = title, fontSize = 11.sp, fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+            Icon(imageVector = icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(18.dp))
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = value, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, color = accentColor)
+    }
+}
+
+@Composable
 private fun QuickTile(
     label: String,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    GlassCard(
+    Card(
         onClick = onClick,
-        shape = RoundedCornerShape(20.dp),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
         modifier = modifier
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp)
         ) {
-            Icon(imageVector = icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp))
+            Icon(imageVector = icon, contentDescription = null, tint = MedNovaBlue, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.height(6.dp))
             Text(text = label, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
         }

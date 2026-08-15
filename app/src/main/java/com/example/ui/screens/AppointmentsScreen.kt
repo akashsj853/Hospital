@@ -1,6 +1,7 @@
 package com.example.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -19,10 +20,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.models.AppointmentEntity
 import com.example.data.models.DoctorEntity
+import com.example.ui.components.GlassCard
 import com.example.ui.components.StatusChip
 import com.example.ui.theme.MedNovaBlue
 import com.example.ui.theme.MedNovaDanger
 import com.example.ui.theme.MedNovaSuccess
+import com.example.ui.theme.MedNovaTeal
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,22 +35,25 @@ fun AppointmentsScreen(
     onBookAppointment: (patientName: String, doctorName: String, department: String, date: String, timeSlot: String, consultType: String, symptoms: String) -> Unit,
     onUpdateStatus: (AppointmentEntity, String) -> Unit
 ) {
-    var searchQuery by remember { mutableStateOf("") }
     var selectedFilter by remember { mutableStateOf("ALL") }
+    var searchQuery by remember { mutableStateOf("") }
     var showBookModal by remember { mutableStateOf(false) }
+    var selectedApptDetail by remember { mutableStateOf<AppointmentEntity?>(null) }
     var videoCallAppt by remember { mutableStateOf<AppointmentEntity?>(null) }
 
     val filteredAppointments = appointments.filter { appt ->
+        val matchesFilter = when (selectedFilter) {
+            "ALL" -> true
+            "CONFIRMED" -> appt.status.equals("CONFIRMED", ignoreCase = true)
+            "PENDING" -> appt.status.equals("PENDING", ignoreCase = true)
+            "COMPLETED" -> appt.status.equals("COMPLETED", ignoreCase = true)
+            "TELEMED" -> appt.consultType.contains("Video", ignoreCase = true)
+            else -> true
+        }
         val matchesSearch = appt.patientName.contains(searchQuery, ignoreCase = true) ||
                 appt.doctorName.contains(searchQuery, ignoreCase = true) ||
                 appt.department.contains(searchQuery, ignoreCase = true)
-        val matchesFilter = when (selectedFilter) {
-            "CONFIRMED" -> appt.status == "CONFIRMED"
-            "PENDING" -> appt.status == "PENDING"
-            "COMPLETED" -> appt.status == "COMPLETED"
-            else -> true
-        }
-        matchesSearch && matchesFilter
+        matchesFilter && matchesSearch
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -56,24 +62,28 @@ fun AppointmentsScreen(
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            // Header & Book Button
+            // Screen Header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    Text(text = "Appointments Management", fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Text(text = "${filteredAppointments.size} active consultations", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                    Text(text = "OPD & Consultations", fontWeight = FontWeight.Bold, fontSize = 20.sp)
+                    Text(
+                        text = "Real-time queue & telemedicine triage",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
                 }
                 Button(
                     onClick = { showBookModal = true },
                     shape = RoundedCornerShape(10.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = MedNovaBlue)
                 ) {
-                    Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "Book Appt", fontWeight = FontWeight.Bold)
+                    Text(text = "Book OPD", fontWeight = FontWeight.SemiBold, fontSize = 12.sp)
                 }
             }
 
@@ -90,17 +100,17 @@ fun AppointmentsScreen(
                 singleLine = true
             )
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Filter Chips
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                listOf("ALL", "CONFIRMED", "PENDING", "COMPLETED").forEach { filter ->
-                    FilterChip(
-                        selected = selectedFilter == filter,
-                        onClick = { selectedFilter = filter },
-                        label = { Text(filter) }
-                    )
-                }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterPill("All (${appointments.size})", selected = selectedFilter == "ALL") { selectedFilter = "ALL" }
+                FilterPill("Confirmed", selected = selectedFilter == "CONFIRMED") { selectedFilter = "CONFIRMED" }
+                FilterPill("Pending", selected = selectedFilter == "PENDING") { selectedFilter = "PENDING" }
+                FilterPill("Video Call", selected = selectedFilter == "TELEMED") { selectedFilter = "TELEMED" }
             }
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -113,9 +123,12 @@ fun AppointmentsScreen(
             ) {
                 items(filteredAppointments) { appt ->
                     Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selectedApptDetail = appt },
                         shape = RoundedCornerShape(14.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                        elevation = CardDefaults.cardElevation(defaultElevation = 1.5.dp)
                     ) {
                         Column(modifier = Modifier.padding(14.dp)) {
                             Row(
@@ -126,17 +139,31 @@ fun AppointmentsScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Box(
                                         modifier = Modifier
-                                            .size(36.dp)
+                                            .size(40.dp)
                                             .clip(CircleShape)
-                                            .background(MedNovaBlue.copy(alpha = 0.15f)),
+                                            .background(
+                                                if (appt.consultType.contains("Video", ignoreCase = true))
+                                                    MedNovaTeal.copy(alpha = 0.15f)
+                                                else
+                                                    MedNovaBlue.copy(alpha = 0.15f)
+                                            ),
                                         contentAlignment = Alignment.Center
                                     ) {
-                                        Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = MedNovaBlue)
+                                        Icon(
+                                            imageVector = if (appt.consultType.contains("Video", ignoreCase = true)) Icons.Default.Videocam else Icons.Default.Person,
+                                            contentDescription = null,
+                                            tint = if (appt.consultType.contains("Video", ignoreCase = true)) MedNovaTeal else MedNovaBlue,
+                                            modifier = Modifier.size(20.dp)
+                                        )
                                     }
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column {
                                         Text(text = appt.patientName, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                                        Text(text = "${appt.doctorName} (${appt.department})", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+                                        Text(
+                                            text = "${appt.doctorName} • ${appt.department}",
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.primary
+                                        )
                                     }
                                 }
                                 StatusChip(status = appt.status)
@@ -150,81 +177,25 @@ fun AppointmentsScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(imageVector = Icons.Default.Event, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    Icon(imageVector = Icons.Default.CalendarToday, contentDescription = null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text(text = "${appt.date} • ${appt.timeSlot}", fontSize = 12.sp)
+                                    Text(text = appt.date, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Icon(imageVector = Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(text = appt.timeSlot, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                                 }
 
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(
-                                        imageVector = if (appt.consultType == "Video Call") Icons.Default.VideoCall else Icons.Default.LocalHospital,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.primary,
-                                        modifier = Modifier.size(14.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(text = appt.consultType, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                                }
-                            }
-
-                            if (appt.symptoms.isNotBlank()) {
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Text(
-                                    text = "Symptoms: ${appt.symptoms}",
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                )
-                            }
-
-                            HorizontalDivider(modifier = Modifier.padding(vertical = 10.dp))
-
-                            // Action Buttons
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.End,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                if (appt.consultType == "Video Call" && appt.status == "CONFIRMED") {
+                                if (appt.consultType.contains("Video", ignoreCase = true)) {
                                     Button(
                                         onClick = { videoCallAppt = appt },
-                                        colors = ButtonDefaults.buttonColors(containerColor = MedNovaSuccess),
-                                        modifier = Modifier.height(34.dp),
-                                        contentPadding = PaddingValues(horizontal = 10.dp)
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = MedNovaTeal)
                                     ) {
-                                        Icon(imageVector = Icons.Default.VideoCall, contentDescription = null, modifier = Modifier.size(14.dp))
+                                        Icon(imageVector = Icons.Default.Videocam, contentDescription = null, modifier = Modifier.size(14.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text(text = "Join Video", fontSize = 11.sp)
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                }
-
-                                if (appt.status == "PENDING") {
-                                    Button(
-                                        onClick = { onUpdateStatus(appt, "CONFIRMED") },
-                                        colors = ButtonDefaults.buttonColors(containerColor = MedNovaBlue),
-                                        modifier = Modifier.height(34.dp),
-                                        contentPadding = PaddingValues(horizontal = 10.dp)
-                                    ) {
-                                        Text(text = "Confirm", fontSize = 11.sp)
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                }
-
-                                if (appt.status != "COMPLETED" && appt.status != "CANCELLED") {
-                                    OutlinedButton(
-                                        onClick = { onUpdateStatus(appt, "COMPLETED") },
-                                        modifier = Modifier.height(34.dp),
-                                        contentPadding = PaddingValues(horizontal = 10.dp)
-                                    ) {
-                                        Text(text = "Mark Done", fontSize = 11.sp)
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                    IconButton(
-                                        onClick = { onUpdateStatus(appt, "CANCELLED") },
-                                        modifier = Modifier.size(34.dp)
-                                    ) {
-                                        Icon(imageVector = Icons.Default.Close, contentDescription = "Cancel", tint = MedNovaDanger)
+                                        Text(text = "Join Call", fontSize = 11.sp)
                                     }
                                 }
                             }
@@ -233,161 +204,242 @@ fun AppointmentsScreen(
                 }
             }
         }
+    }
 
-        // BOOK APPOINTMENT MODAL DIALOG
-        if (showBookModal) {
-            BookAppointmentDialog(
-                doctors = doctors,
-                onDismiss = { showBookModal = false },
-                onBook = { pName, dName, dept, date, slot, cType, symp ->
-                    onBookAppointment(pName, dName, dept, date, slot, cType, symp)
-                    showBookModal = false
+    // Appointment Detail / Action Dialog
+    selectedApptDetail?.let { appt ->
+        AlertDialog(
+            onDismissRequest = { selectedApptDetail = null },
+            title = { Text(text = "Appointment #${appt.id}", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(text = "Patient: ${appt.patientName}", fontWeight = FontWeight.SemiBold)
+                    Text(text = "Doctor: ${appt.doctorName} (${appt.department})")
+                    Text(text = "Scheduled: ${appt.date} at ${appt.timeSlot}")
+                    Text(text = "Consultation Mode: ${appt.consultType}")
+                    Text(text = "Chief Complaints: ${appt.symptoms}")
+                    if (appt.notes.isNotBlank()) {
+                        Text(text = "Doctor's Notes: ${appt.notes}", color = MedNovaBlue)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(text = "Update Status:", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                onUpdateStatus(appt, "CONFIRMED")
+                                selectedApptDetail = null
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MedNovaBlue),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Confirm", fontSize = 11.sp)
+                        }
+                        Button(
+                            onClick = {
+                                onUpdateStatus(appt, "COMPLETED")
+                                selectedApptDetail = null
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MedNovaSuccess),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Complete", fontSize = 11.sp)
+                        }
+                        Button(
+                            onClick = {
+                                onUpdateStatus(appt, "CANCELLED")
+                                selectedApptDetail = null
+                            },
+                            colors = ButtonDefaults.buttonColors(containerColor = MedNovaDanger),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Cancel", fontSize = 11.sp)
+                        }
+                    }
                 }
-            )
-        }
+            },
+            confirmButton = {
+                TextButton(onClick = { selectedApptDetail = null }) {
+                    Text("Done")
+                }
+            }
+        )
+    }
 
-        // TELECONSULTATION VIDEO CALL MODAL
-        videoCallAppt?.let { appt ->
-            TeleconsultationDialog(
-                appointment = appt,
-                onDismiss = { videoCallAppt = null }
-            )
-        }
+    // Telemedicine Video Call Simulation Modal
+    videoCallAppt?.let { appt ->
+        AlertDialog(
+            onDismissRequest = { videoCallAppt = null },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(imageVector = Icons.Default.Videocam, contentDescription = null, tint = MedNovaTeal)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(text = "Telemedicine Video Session", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                }
+            },
+            text = {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(180.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF0F172A)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(imageVector = Icons.Default.AccountCircle, contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(64.dp))
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(text = "Connected with ${appt.doctorName}", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                            Text(text = "Encrypted WebRTC Clinical Channel", color = MedNovaTeal, fontSize = 11.sp)
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(text = "Patient: ${appt.patientName}", fontWeight = FontWeight.Medium)
+                    Text(text = "Symptoms: ${appt.symptoms}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { videoCallAppt = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = MedNovaDanger)
+                ) {
+                    Icon(imageVector = Icons.Default.CallEnd, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text("End Call")
+                }
+            }
+        )
+    }
+
+    // Book Appointment Modal
+    if (showBookModal) {
+        var patientName by remember { mutableStateOf("") }
+        var selectedDoctor by remember { mutableStateOf(if (doctors.isNotEmpty()) doctors.first().name else "Dr. Ananya Sharma") }
+        var department by remember { mutableStateOf(if (doctors.isNotEmpty()) doctors.first().department else "Cardiology") }
+        var date by remember { mutableStateOf("2026-08-15") }
+        var timeSlot by remember { mutableStateOf("10:30 AM") }
+        var consultType by remember { mutableStateOf("In-Person") }
+        var symptoms by remember { mutableStateOf("") }
+
+        AlertDialog(
+            onDismissRequest = { showBookModal = false },
+            title = { Text(text = "Book OPD Consultation", fontWeight = FontWeight.Bold) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = patientName,
+                        onValueChange = { patientName = it },
+                        label = { Text("Patient Name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = selectedDoctor,
+                        onValueChange = { selectedDoctor = it },
+                        label = { Text("Doctor Name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = department,
+                        onValueChange = { department = it },
+                        label = { Text("Department / Specialty") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedTextField(
+                            value = date,
+                            onValueChange = { date = it },
+                            label = { Text("Date") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = timeSlot,
+                            onValueChange = { timeSlot = it },
+                            label = { Text("Time Slot") },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { consultType = "In-Person" },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (consultType == "In-Person") MedNovaBlue else MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("In-Person", fontSize = 11.sp)
+                        }
+                        Button(
+                            onClick = { consultType = "Video Call" },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (consultType == "Video Call") MedNovaTeal else MaterialTheme.colorScheme.surfaceVariant
+                            ),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text("Telemedicine", fontSize = 11.sp)
+                        }
+                    }
+                    OutlinedTextField(
+                        value = symptoms,
+                        onValueChange = { symptoms = it },
+                        label = { Text("Chief Complaint / Symptoms") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        if (patientName.isNotBlank()) {
+                            onBookAppointment(
+                                patientName,
+                                selectedDoctor,
+                                department,
+                                date,
+                                timeSlot,
+                                consultType,
+                                symptoms
+                            )
+                            showBookModal = false
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MedNovaBlue)
+                ) {
+                    Text("Confirm Booking")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBookModal = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun BookAppointmentDialog(
-    doctors: List<DoctorEntity>,
-    onDismiss: () -> Unit,
-    onBook: (patientName: String, doctorName: String, department: String, date: String, timeSlot: String, consultType: String, symptoms: String) -> Unit
+private fun FilterPill(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit
 ) {
-    var patientName by remember { mutableStateOf("") }
-    var selectedDoctor by remember { mutableStateOf(doctors.firstOrNull()?.name ?: "Dr. Ananya Sharma") }
-    var department by remember { mutableStateOf(doctors.firstOrNull()?.department ?: "Cardiology") }
-    var date by remember { mutableStateOf("2026-08-07") }
-    var timeSlot by remember { mutableStateOf("11:00 AM") }
-    var consultType by remember { mutableStateOf("In-Person") }
-    var symptoms by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text(text = "Schedule New Appointment", fontWeight = FontWeight.Bold) },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                OutlinedTextField(
-                    value = patientName,
-                    onValueChange = { patientName = it },
-                    label = { Text("Patient Full Name") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = selectedDoctor,
-                    onValueChange = { selectedDoctor = it },
-                    label = { Text("Doctor Name") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                OutlinedTextField(
-                    value = department,
-                    onValueChange = { department = it },
-                    label = { Text("Department") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedTextField(
-                        value = date,
-                        onValueChange = { date = it },
-                        label = { Text("Date (YYYY-MM-DD)") },
-                        modifier = Modifier.weight(1f)
-                    )
-                    OutlinedTextField(
-                        value = timeSlot,
-                        onValueChange = { timeSlot = it },
-                        label = { Text("Time Slot") },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = consultType == "In-Person",
-                        onClick = { consultType = "In-Person" },
-                        label = { Text("In-Person") }
-                    )
-                    FilterChip(
-                        selected = consultType == "Video Call",
-                        onClick = { consultType = "Video Call" },
-                        label = { Text("Video Call") }
-                    )
-                }
-
-                OutlinedTextField(
-                    value = symptoms,
-                    onValueChange = { symptoms = it },
-                    label = { Text("Chief Complaint / Symptoms") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = { onBook(patientName, selectedDoctor, department, date, timeSlot, consultType, symptoms) },
-                colors = ButtonDefaults.buttonColors(containerColor = MedNovaBlue)
-            ) {
-                Text("Confirm Booking")
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel")
-            }
-        }
-    )
-}
-
-@Composable
-private fun TeleconsultationDialog(
-    appointment: AppointmentEntity,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(imageVector = Icons.Default.Videocam, contentDescription = null, tint = MedNovaSuccess)
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "HD Video Consultation", fontWeight = FontWeight.Bold)
-            }
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(240.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(Color.Black),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center
-            ) {
-                Icon(imageVector = Icons.Default.Person, contentDescription = null, tint = Color.White, modifier = Modifier.size(64.dp))
-                Spacer(modifier = Modifier.height(10.dp))
-                Text(text = appointment.doctorName, color = Color.White, fontWeight = FontWeight.Bold)
-                Text(text = "Connected • 02:45 Encrypted Session", color = MedNovaSuccess, fontSize = 12.sp)
-            }
-        },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                colors = ButtonDefaults.buttonColors(containerColor = MedNovaDanger)
-            ) {
-                Icon(imageVector = Icons.Default.CallEnd, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(4.dp))
-                Text("End Call")
-            }
-        }
-    )
+    Surface(
+        onClick = onClick,
+        shape = RoundedCornerShape(20.dp),
+        color = if (selected) MedNovaBlue else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+        contentColor = if (selected) Color.White else MaterialTheme.colorScheme.onSurface
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+        )
+    }
 }
